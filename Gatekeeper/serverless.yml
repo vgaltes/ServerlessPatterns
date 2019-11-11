@@ -1,0 +1,90 @@
+service: Gatekeeper
+
+plugins:
+  - serverless-pseudo-parameters
+  - serverless-iam-roles-per-function
+
+provider:
+  name: aws
+  runtime: nodejs10.x
+  region: ${opt:region, self:custom.defaultRegion}
+  logs:
+    restApi: true
+
+custom:
+  defaultRegion: eu-west-1
+  tableName: ${self:provider.region}-GatekeeperTable
+  authorizerTableName: ${self:provider.region}-GatekeeperAuthorizerTable
+
+functions:
+  GetItem:
+    handler: src/functions/getItem.handler
+    events:
+      - http:
+          method: get
+          path: item/{itemId}
+          authorizer: 
+            name: CustomAuthorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
+    environment:
+      tableName: ${self:custom.tableName}
+    iamRoleStatements:
+      - Effect: Allow
+        Action: dynamodb:getItem
+        Resource: !GetAtt GatekeeperTable.Arn
+
+  PutItem:
+    handler: src/functions/putItem.handler
+    events:
+      - http:
+          method: post
+          path: item
+          authorizer: 
+            name: CustomAuthorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
+            
+    environment:
+      tableName: ${self:custom.tableName}
+    iamRoleStatements:
+      - Effect: Allow
+        Action: dynamodb:putItem
+        Resource: !GetAtt GatekeeperTable.Arn
+
+  CustomAuthorizer:
+    handler: src/functions/authorizer.handler
+    environment:
+      tableName: ${self:custom.authorizerTableName}
+    iamRoleStatements:
+      - Effect: Allow
+        Action: dynamodb:getItem
+        Resource: !GetAtt AuthorizationTable.Arn
+
+resources:
+  Resources:
+    GatekeeperTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        KeySchema:
+          - AttributeName: id
+            KeyType: 'HASH'
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: 'N'
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${self:custom.tableName}
+
+    AuthorizationTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        KeySchema:
+          - AttributeName: id
+            KeyType: 'HASH'
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: 'N'
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${self:custom.authorizerTableName}
