@@ -3,7 +3,7 @@ const AWS = require("aws-sdk");
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 const tableName = process.env.tableName;
 
-module.exports.handler = async (event) => {
+module.exports.handler = async (event, context) => {
   console.log(event);
 
   const id = event.authorizationToken;
@@ -20,10 +20,27 @@ module.exports.handler = async (event) => {
   console.log(dynamodbResp);
 
   if (!dynamodbResp.Item){
-    throw new Error('Not authorised!');
+    // 401
+    context.fail('Unauthorized');
+
+    // 403
+    // context.succeed({
+    //   "policyDocument": {
+    //     "Version": "2012-10-17",
+    //     "Statement": [
+    //       {
+    //         "Action": "execute-api:Invoke",
+    //         "Effect": "Deny",
+    //         "Resource": [
+    //           event.methodArn
+    //         ]
+    //       }
+    //     ]
+    //   }
+    // })
   }
 
-  const resp = 
+  context.succeed( 
   {
     "principalId": dynamodbResp.Item.name,
     "policyDocument": {
@@ -41,7 +58,5 @@ module.exports.handler = async (event) => {
       "role": "admin",
       "createdAt": "2019-11-11T12:15:42"
     }
-  };
-
-  return resp;
+  });
 };
