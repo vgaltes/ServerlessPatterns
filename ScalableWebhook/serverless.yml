@@ -1,0 +1,42 @@
+service: ScalableWebhook
+
+plugins:
+  - serverless-iam-roles-per-function
+
+provider:
+  name: aws
+  runtime: nodejs10.x
+  region: ${opt:region, self:custom.defaultRegion}
+
+custom:
+  defaultRegion: eu-west-1
+
+functions:
+  Flooder:
+    handler: src/functions/flooder.handler
+    events:
+      - http:
+          method: post
+          path: flooder
+    environment:
+      queueUrl: !Ref WorkerQueue
+    iamRoleStatements:
+      - Effect: Allow
+        Action: SQS:SendMessage
+        Resource: !GetAtt WorkerQueue.Arn
+
+  Worker:
+    handler: src/functions/worker.handler
+    memorySize: 256
+    reservedConcurrency: 2
+    events:
+      - sqs:
+          batchSize: 10
+          arn: !GetAtt WorkerQueue.Arn
+
+resources:
+  Resources:
+    WorkerQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: "WorkerQueue"

@@ -1,0 +1,14 @@
+{
+  "name": "ScalableWebhook",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "deploy": "serverless deploy --aws-profile serverless-local",
+    "start": "curl https://6hhd6ptari.execute-api.eu-west-1.amazonaws.com/dev/flooder --data '{\"times\": 100}'"
+  },
+  "devDependencies": {
+    "serverless": "^1.57.0",
+    "serverless-iam-roles-per-function": "^2.0.2"
+  }
+}
