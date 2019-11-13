@@ -1,0 +1,14 @@
+{
+  "name": "Gatekeeper",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "deploy": "serverless deploy --aws-profile serverless-local"
+  },
+  "devDependencies": {
+    "serverless": "^1.57.0",
+    "serverless-iam-roles-per-function": "^2.0.2",
+    "serverless-pseudo-parameters": "^2.5.0"
+  }
+}
