@@ -28,11 +28,18 @@ functions:
   Worker:
     handler: src/functions/worker.handler
     memorySize: 256
-    reservedConcurrency: 2
+    reservedConcurrency: 5
     events:
       - sqs:
           batchSize: 10
           arn: !GetAtt WorkerQueue.Arn
+
+  DLQReader:
+    handler: src/function/dlqReader.handler
+    events:
+      - sqs:
+          batchSize: 10
+          arn: !GetAtt ReceiverDeadLetterQueue.Arn
 
 resources:
   Resources:
@@ -40,3 +47,14 @@ resources:
       Type: "AWS::SQS::Queue"
       Properties:
         QueueName: "WorkerQueue"
+        VisibilityTimeout: 30 # 20 seconds
+        MessageRetentionPeriod: 60 # 60 seconds
+        RedrivePolicy:
+          deadLetterTargetArn: !GetAtt ReceiverDeadLetterQueue.Arn
+          maxReceiveCount: 3
+
+    ReceiverDeadLetterQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: "WorkerDLQ"
+        MessageRetentionPeriod: 1209600 # 14 days in seconds
