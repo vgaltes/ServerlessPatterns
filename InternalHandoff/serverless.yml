@@ -1,0 +1,64 @@
+service: InternalHandoff
+
+plugins:
+  - serverless-iam-roles-per-function
+  - serverless-pseudo-parameters
+
+provider:
+  name: aws
+  runtime: nodejs10.x
+  region: ${opt:region, self:custom.defaultRegion}
+  stage: ${opt:stage, self:custom.defaultStage}
+
+custom:
+  defaultRegion: eu-west-1
+  defaultStage: dev
+  tableName: ${self:provider.stage}-InternalHandofffTable
+  dlqTopicName: ${self:provider.stage}-DLQTopicName
+  dlqTopicArn: arn:aws:sns:#{AWS::Region}:#{AWS::AccountId}:${self:custom.dlqTopicName}
+
+functions:
+  GetItem:
+    handler: src/functions/getItem.handler
+    environment:
+      tableName: ${self:custom.tableName}
+    onError: ${self:custom.dlqTopicArn}
+    iamRoleStatements:
+      - Effect: Allow
+        Action: dynamodb:getItem
+        Resource: !GetAtt InternalHandofffTable.Arn
+      - Effect: Allow
+        Action: sns:Publish
+        Resource: ${self:custom.dlqTopicArn}
+
+  PutItem:
+    handler: src/functions/putItem.handler
+    environment:
+      tableName: ${self:custom.tableName}
+    onError: ${self:custom.dlqTopicArn}
+    iamRoleStatements:
+      - Effect: Allow
+        Action: dynamodb:putItem
+        Resource: !GetAtt InternalHandofffTable.Arn
+      - Effect: Allow
+        Action: sns:Publish
+        Resource: ${self:custom.dlqTopicArn}
+
+  ReadErrors:
+    handler: src/functions/readErrors.handler
+    events:
+      - sns: ${self:custom.dlqTopicName}
+
+resources:
+  Resources:
+    InternalHandofffTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        KeySchema:
+          - AttributeName: id
+            KeyType: 'HASH'
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: 'N'
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${self:custom.tableName}
