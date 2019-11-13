@@ -1,0 +1,15 @@
+{
+  "name": "InternalAPI",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "serverless": "^1.57.0",
+    "serverless-iam-roles-per-function": "^2.0.2"
+  },
+  "scripts": {
+    "deploy": "serverless deploy --aws-profile serverless-local",
+    "putItem": "node callPutItem.js",
+    "getItem": "node callGetItem.js"
+  }
+}
