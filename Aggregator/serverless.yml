@@ -1,0 +1,49 @@
+service: Aggregator
+
+plugins:
+  - serverless-iam-roles-per-function
+  - serverless-pseudo-parameters
+
+provider:
+  name: aws
+  runtime: nodejs10.x
+  region: ${opt:region, self:custom.defaultRegion}
+  stage: ${opt:stage, self:custom.defaultStage}
+
+custom:
+  defaultRegion: eu-west-1
+  defaultStage: dev
+  tableName: ${self:provider.region}-SimpleWebServiceTable
+
+functions:
+  SumService:
+    handler: src/functions/sumService.handler
+    events:
+      - http:
+          method: get
+          path: sum/{numberA}/{numberB}
+
+  MultiplyService:
+    handler: src/functions/multiplyService.handler
+    events:
+      - http:
+          method: get
+          path: mult/{numberA}/{numberB}
+
+  SubstractService:
+    handler: src/functions/substractService.handler
+
+  MainService:
+    handler: src/functions/mainService.handler
+    events:
+      - http:
+          method: get
+          path: main/{original}/{add}/{multiply}/{substract}
+    iamRoleStatements:
+      - Effect: Allow
+        Action: lambda:InvokeFunction
+        Resource: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:Aggregator-dev-SubstractService
+    environment:
+      substractFunctionName: Aggregator-${self:provider.stage}-SubstractService
+      addUrl: https://wanah2vbve.execute-api.eu-west-1.amazonaws.com/dev/sum
+      multiplyUrl: https://wanah2vbve.execute-api.eu-west-1.amazonaws.com/dev/mult
