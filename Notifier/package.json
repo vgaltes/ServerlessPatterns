@@ -1,0 +1,12 @@
+{
+  "name": "Notifier",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "deploy": "serverless deploy --aws-profile serverless-local"
+  },
+  "devDependencies": {
+    "serverless": "^1.58.0"
+  }
+}

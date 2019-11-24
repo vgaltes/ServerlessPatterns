@@ -1,0 +1,80 @@
+service: Notifier
+
+provider:
+  name: aws
+  runtime: nodejs10.x
+  region: ${opt:region, self:custom.defaultRegion}
+  stage: ${opt:stage, self:custom.defaultStage}
+
+custom:
+  defaultStage: dev
+  defaultRegion: eu-west-1
+
+functions:
+  ReadFromSNS:
+    handler: src/functions/readFromSNS.handler
+    events:
+      - sns:
+          arn: !Ref SNSNotifier
+          topicName: SNSNotifier
+
+  ReadFromDLQ:
+    handler: src/functions/readFromDLQ.handler
+    events:
+      - sqs:
+          batchSize: 1
+          arn: !GetAtt NotifierDLQ.Arn
+
+resources:
+  Resources:
+    NotifierDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-${self:provider.stage}-NotifierDLQ
+        
+    NotifierDLQPolicy:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+        PolicyDocument:
+          {
+            "Version": "2012-10-17",
+            "Id": "NotifierDLQPolicy",
+            "Statement": [{
+              "Sid":"NotifierDLQPolicy001",
+              "Effect":"Allow",
+              "Principal":"*",
+              "Action":"sqs:SendMessage",
+              "Resource":"arn:aws:sqs:eu-west-1:165940758985:Notifier-dev-NotifierDLQ",
+              "Condition":{
+                "ArnEquals":{
+                  "aws:SourceArn":"arn:aws:sns:eu-west-1:165940758985:Notifier-dev-SNSNotifier"
+                }
+              }
+            }]
+          }
+      
+        Queues:
+          - !Ref NotifierDLQ
+
+    SNSNotifier:
+      Type: AWS::SNS::Topic
+      Properties:
+        DisplayName: ${self:service}-${self:provider.stage}-SNSNotifier
+        TopicName: ${self:service}-${self:provider.stage}-SNSNotifier
+
+    LambdaInvokePermissionFromSNS:
+      Type: AWS::Lambda::Permission
+      Properties:
+        Action: lambda:InvokeFunction
+        Principal: sns.amazonaws.com
+        SourceArn: !Ref SNSNotifier
+        FunctionName: arn:aws:lambda:eu-west-1:165940758985:function:Notifier-dev-ReadFromSNS
+
+    NotifierSubscription:
+      Type: AWS::SNS::Subscription
+      Properties: 
+        Endpoint: arn:aws:lambda:eu-west-1:165940758985:function:Notifier-dev-ReadFromSNS-badOne
+        Protocol: lambda
+        TopicArn: !Ref SNSNotifier
+        RedrivePolicy:
+          deadLetterTargetArn: !GetAtt NotifierDLQ.Arn
