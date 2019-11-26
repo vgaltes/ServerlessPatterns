@@ -1,7 +1,7 @@
 module.exports.handler = (event, context) => {
-  const message = JSON.parse(event.Records[0].Sns.Message);
+  const message = event.Records[0].Sns.Message;
 
-  console.log(`Message received via SNS. ${message}`) ;
+  console.log(`Message received via SNS. ${message}`);
 
   return "all done";
 };

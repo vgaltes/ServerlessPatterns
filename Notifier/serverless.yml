@@ -1,5 +1,8 @@
 service: Notifier
 
+plugins:
+  - serverless-pseudo-parameters
+
 provider:
   name: aws
   runtime: nodejs10.x
@@ -44,10 +47,10 @@ resources:
               "Effect":"Allow",
               "Principal":"*",
               "Action":"sqs:SendMessage",
-              "Resource":"arn:aws:sqs:eu-west-1:165940758985:Notifier-dev-NotifierDLQ",
+              "Resource":"arn:aws:sqs:#{AWS::Region}:#{AWS::AccountId}:${self:service}-${self:provider.stage}-NotifierDLQ",
               "Condition":{
                 "ArnEquals":{
-                  "aws:SourceArn":"arn:aws:sns:eu-west-1:165940758985:Notifier-dev-SNSNotifier"
+                  "aws:SourceArn":"arn:aws:sns:#{AWS::Region}:#{AWS::AccountId}:${self:service}-${self:provider.stage}-SNSNotifier"
                 }
               }
             }]
@@ -68,12 +71,13 @@ resources:
         Action: lambda:InvokeFunction
         Principal: sns.amazonaws.com
         SourceArn: !Ref SNSNotifier
-        FunctionName: arn:aws:lambda:eu-west-1:165940758985:function:Notifier-dev-ReadFromSNS
+        FunctionName: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${self:provider.stage}-ReadFromSNS
+      DependsOn: ReadFromSNSLambdaFunction
 
     NotifierSubscription:
       Type: AWS::SNS::Subscription
       Properties: 
-        Endpoint: arn:aws:lambda:eu-west-1:165940758985:function:Notifier-dev-ReadFromSNS-badOne
+        Endpoint: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${self:provider.stage}-ReadFromSNS-badOne
         Protocol: lambda
         TopicArn: !Ref SNSNotifier
         RedrivePolicy:
